@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-900 h-screen flex items-center justify-center p-6">
+  <div class="max-w-md w-full bg-white rounded-3xl shadow-2xl p-8 text-center border border-red-200">
+    <!-- Icon with Subtle Animation -->
+    <div class="text-7xl mb-6 animate-pulse">🚫</div>
+    
+    <h1 class="text-3xl font-black text-slate-900 mb-3 tracking-tight">Access Denied</h1>
+    
+    <p class="text-slate-500 mb-8 leading-relaxed">
+      This system is restricted to authorized personnel within the 
+      <span class="font-bold text-blue-600"><?= ALLOWED_DOMAIN ?></span> organization.
+    </p>
+
+    <!-- User Detail Box -->
+    <div class="bg-slate-50 border border-slate-100 p-5 rounded-2xl mb-8">
+      <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mb-2">Authenticated As</p>
+      <p class="text-slate-800 font-bold break-all">
+        <?= currentUserEmail || 'Not Signed In' ?>
+      </p>
+    </div>
+
+    <!-- Instructions -->
+    <div class="space-y-4">
+      <p class="text-sm text-slate-400 italic">
+        Please switch to your official organization account and refresh the browser.
+      </p>
+      
+      <a href="https://accounts.google.com/AccountChooser?continue=https://script.google.com/macros/s/<?= ScriptApp.getService().getUrl().split('/')[5] ?>/exec" 
+         class="inline-block w-full py-3 px-6 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl transition-colors">
+        Switch Account
+      </a>
+    </div>
+  </div>
+</body>
+</html>

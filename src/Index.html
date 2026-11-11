@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eagle Points System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+    
+    :root { 
+      font-size: clamp(14px, 1.2vw, 18px);
+      --bg-main: <?= brand.colors.background ?>;
+      --color-accent: <?= brand.colors.accent ?>;
+      --color-accent-text: <?= brand.colors.accentText ?>;
+      --grad-start: <?= brand.colors.gradStart ?>;
+      --grad-end: <?= brand.colors.gradEnd ?>;
+      --font-main: <?= brand.colors.fontMain ?>;
+    }
+
+    /* Burn-in Prevention: Animated Backgrounds & Border Widths */
+    @keyframes bgShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    @keyframes borderPulse {
+      0% { border-color: rgba(255,255,255,0.05); border-width: 1px; }
+      50% { border-color: rgba(255,255,255,0.2); border-width: 4px; box-shadow: 0 4px 30px rgba(0,0,0,0.3); }
+      100% { border-color: rgba(255,255,255,0.05); border-width: 2px; }
+    }
+
+    body { 
+      font-family: var(--font-main); 
+      color: white; 
+      min-height: 100vh; 
+      margin: 0; 
+      overflow-x: hidden; 
+      background: linear-gradient(-45deg, var(--bg-main), #1e293b, var(--bg-main), #0f172a);
+      background-size: 400% 400%;
+      animation: bgShift 60s ease infinite;
+    }
+    
+    .glass { 
+      background: rgba(255, 255, 255, 0.03); 
+      backdrop-filter: blur(12px); 
+      border-style: solid;
+      animation: borderPulse 15s infinite alternate;
+    }
+    
+    .grad-purple { 
+      background: linear-gradient(135deg, var(--grad-start) 0%, var(--grad-end) 50%, var(--grad-start) 100%); 
+      background-size: 200% 200%;
+      animation: bgShift 30s ease infinite;
+    }
+
+    .text-brand-accent { color: var(--color-accent) !important; }
+    .bg-brand-accent { background-color: var(--color-accent) !important; color: var(--color-accent-text) !important; }
+    
+    .medal-gold { background: var(--color-accent) !important; color: var(--color-accent-text) !important; box-shadow: 0 0 20px rgba(251, 191, 36, 0.3); }
+    .medal-silver { background: #e2e8f0 !important; color: #1e293b !important; box-shadow: 0 0 20px rgba(226, 232, 240, 0.2); }
+    .medal-bronze { background: #d97706 !important; color: #fff !important; box-shadow: 0 0 20px rgba(217, 119, 6, 0.2); }
+    
+    #main-nav { 
+      display: flex !important; 
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+
+    .nav-active { background: var(--color-accent) !important; color: var(--color-accent-text) !important; transform: translateY(-2px); box-shadow: 0 4px 15px rgba(251, 191, 36, 0.4); }
+    
+    .fade-in { animation: fadeIn 0.4s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+
+    #col-left { transition: flex-direction 1s ease; }
+
+    body.vivi-layout { height: 100vh; overflow: hidden; padding: 1.5rem !important; }
+    body.vivi-layout main { height: 100%; padding-top: 0; }
+    
+    main { padding-top: 1rem; }
+  </style>
+</head>
+<body id="main-body" class="p-4 md:p-6">
+
+  <nav id="main-nav" class="flex justify-center gap-3 mb-8">
+    <button id="btn-s" onclick="tab('s')" class="px-6 py-2.5 rounded-2xl font-black text-xs glass transition-all nav-btn">SCANNER</button>
+    <button id="btn-l" onclick="tab('l')" class="px-6 py-2.5 rounded-2xl font-black text-xs glass transition-all nav-btn">LEADERBOARD</button>
+    <button id="btn-a" onclick="tab('a')" class="px-6 py-2.5 rounded-2xl font-black text-xs glass transition-all nav-btn">ADMIN</button>
+  </nav>
+
+  <main class="max-w-[1900px] mx-auto h-full">
+    
+    <div id="tab-s" class="tab-content" style="display: none;">
+      <div class="glass rounded-[2.5rem] p-8 text-center shadow-2xl max-w-md mx-auto">
+        <h2 onclick="toggleFullScreen()" class="cursor-pointer text-4xl font-black mb-2 text-white italic tracking-tighter hover:opacity-80 transition-opacity">EAGLE <span class="text-brand-accent">POINTS</span></h2>
+        <p class="text-blue-400 font-bold uppercase tracking-widest text-[10px] mb-8">TERMINAL STATION</p>
+        
+        <div class="flex bg-white/5 p-1.5 rounded-2xl mb-8">
+          <button id="mode-text" onclick="setScanMode('text')" class="flex-1 py-2.5 rounded-xl font-black text-[10px] tracking-widest bg-brand-accent transition-all">MANUAL</button>
+          <button id="mode-camera" onclick="setScanMode('camera')" class="flex-1 py-2.5 rounded-xl font-black text-[10px] tracking-widest text-gray-400 transition-all">CAMERA</button>
+        </div>
+
+        <div id="input-zone">
+          <div id="container-text">
+            <input type="text" id="sid" onkeydown="if(event.key==='Enter') handleManualInput(this.value)" placeholder="Type ID..." autofocus class="w-full p-6 bg-white/5 border-2 border-white/10 rounded-3xl text-center text-2xl font-black outline-none focus:border-amber-400 transition-all text-white">
+          </div>
+          <div id="container-camera" class="hidden"><div id="reader"></div></div>
+        </div>
+        <!-- Selection Zone (from previous update) -->
+        <div id="selection-zone" class="hidden mt-4"></div>
+
+        <div id="terminal" class="hidden mt-8 pt-8 border-t border-white/10 text-center">
+          <h3 id="std-name" class="text-3xl font-black text-white italic"></h3>
+          <p id="std-bal" class="text-blue-400 font-bold text-xs uppercase mb-6"></p>
+          <div class="bg-white/5 rounded-3xl p-6 mb-8 border border-white/5">
+            <div class="text-7xl font-black text-brand-accent" id="session-total">0</div>
+          </div>
+          <div class="grid grid-cols-3 gap-4 mb-8">
+           <!--<button onclick="tally(1)" class="bg-emerald-500 py-6 rounded-2xl font-black text-xl active:scale-95 transition-all">+1</button>*/
+            <button onclick="tally(5)" class="bg-blue-600 py-6 rounded-2xl font-black text-xl active:scale-95 transition-all">+5</button>
+            -->
+            <button onclick="tally(10)" class="bg-purple-600 py-6 rounded-2xl font-black text-xl active:scale-95 transition-all">+10</button>
+            <button onclick="tally(50)" class="bg-purple-600 py-6 rounded-2xl font-black text-xl active:scale-95 transition-all">+50</button>
+          </div>
+          <button id="sub-btn" onclick="sendPoints()" disabled class="w-full py-5 bg-brand-accent rounded-2xl text-xl font-black shadow-xl disabled:opacity-20">SUBMIT</button>
+          <button onclick="cancelSession()" class="mt-6 text-gray-500 font-bold text-[10px] uppercase block mx-auto">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-l" class="tab-content" style="display: none;">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full h-full pb-10">
+        
+        <div id="col-left" class="flex flex-col gap-6 min-w-0">
+          <div id="rec-card" class="grad-purple text-white rounded-[2.5rem] shadow-2xl p-8 text-center min-h-[300px] flex flex-col justify-center items-center transition-all duration-700">
+            <div class="text-[9px] uppercase tracking-[0.3em] font-black text-white/60 mb-4">Eagle Recognition</div>
+            <div id="rec-name" class="text-3xl font-black italic mb-4">...</div>
+            <div id="rec-msg" class="text-2xl font-bold italic leading-tight uppercase">...</div>
+          </div>
+
+          <div class="glass rounded-[2.5rem] p-8 shadow-xl flex-grow">
+            <h2 class="text-lg font-black mb-6 italic text-white flex items-center gap-2">🏆 <span class="text-brand-accent">OVERALL</span> ELITE</h2>
+            <div id="overall-list" class="space-y-3"></div>
+            <div class="my-8 border-t border-white/5"></div>
+            <h2 class="text-lg font-black mb-6 italic flex items-center gap-2">📈 <span class="text-emerald-400">SCHOOL</span> GROWTH</h2>
+            <div id="overall-growth" class="space-y-3"></div>
+          </div>
+        </div>
+
+        <div id="col-mid" class="flex flex-col gap-6 min-w-0"></div>
+        
+        <div id="col-right" class="flex flex-col gap-6 min-w-0"></div>
+
+      </div>
+    </div>
+
+    <div id="tab-a" class="tab-content" style="display: none;">
+      <div class="glass rounded-[2.5rem] p-8 text-center shadow-2xl max-w-md mx-auto">
+        <h2 class="text-2xl font-black mb-8 italic tracking-tighter text-white">ADMIN <span class="text-brand-accent">PORTAL</span></h2>
+        <div class="p-6 bg-white/5 rounded-3xl border border-white/10">
+          <input type="text" id="admin-sid" placeholder="Student ID..." class="w-full p-4 bg-white/5 border border-white/10 rounded-2xl mb-3 text-center font-black text-white outline-none">
+          <button onclick="adminLookup()" class="w-full py-3 bg-blue-600 text-white rounded-xl font-black text-xs tracking-widest uppercase">Find Student</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="toast" class="fixed bottom-8 left-1/2 -translate-x-1/2 glass px-8 py-4 rounded-2xl text-center shadow-2xl z-50 opacity-0 transition-all pointer-events-none transform translate-y-4">
+    <div id="toast-msg" class="text-xl font-black text-brand-accent leading-tight"></div>
+  </div>
+
+  <script>
+    /* VARIABLES INJECTED FROM BACKEND */
+    const isviviMode = <?= isvivi === true ?>;
+    const isTeacherMode = <?= isTeacher === true ?>;
+    const isAdminUser = <?= isAdmin === true ?>;
+    const isMSMode = <?= isMS === true ?>; // NEW
+    const msgConfig = <?= JSON.stringify(brand.messaging) ?>;
+
+    let isLayoutFlipped = false;
+
+    function formatName(name) {
+      if (!name) return "";
+      const parts = name.trim().split(" ");
+      if (parts.length < 2) return name.toUpperCase(); 
+      return `${parts[0]} ${parts[parts.length - 1].charAt(0)}`.toUpperCase();
+    }
+
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(e => console.log(e));
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+      }
+    }
+
+    class PraiseEngine {
+      constructor(config) { this.phrases = config || {}; }
+      generate(student, pointsAdded) {
+        const scans = student.scanCount || 0;
+        let category = "grinder"; 
+        if (scans <= 1) category = "rookie";
+        else if (pointsAdded >= 10) category = "highFlyer";
+        else if (scans > 10) category = "regular";
+        const options = this.phrases[category] || ["Great Job", "Keep It Up"];
+        const rawText = options[Math.floor(Math.random() * options.length)];
+        return rawText.split(" ").length > 3 ? rawText.split(" ").slice(0, 2).join(" ") + "<br>" + rawText.split(" ").slice(2).join(" ") : rawText;
+      }
+    }
+    const praiseBot = new PraiseEngine(msgConfig);
+
+    //let activeStd = null, counts = {1:0, 5:0, 10:0}; old point score
+    let activeStd = null, counts = {10:0, 50:0};
+    let recList = [], recIdx = 0, recTimer = null;
+    let html5QrCode = null;
+
+    window.onload = function() {
+      const body = document.getElementById('main-body');
+      
+      if (isviviMode) {
+        body.classList.add('vivi-layout');
+        tab('l');
+      } else {
+        body.classList.remove('vivi-layout');
+        if (isAdminUser) tab('a');
+        else if (isTeacherMode) tab('s');
+        else tab('l'); 
+      }
+      
+      refresh();
+      setInterval(refresh, 120000); 
+      
+      setInterval(() => {
+        isLayoutFlipped = !isLayoutFlipped;
+        const colLeft = document.getElementById('col-left');
+        if(colLeft) colLeft.style.flexDirection = isLayoutFlipped ? 'column-reverse' : 'column';
+        refresh(); 
+      }, 600000); 
+    };
+
+    function tab(t) {
+      const tabs = document.querySelectorAll('.tab-content');
+      tabs.forEach(el => el.style.setProperty('display', 'none', 'important'));
+
+      const btns = document.querySelectorAll('.nav-btn');
+      btns.forEach(b => b.classList.remove('nav-active'));
+      
+      const target = document.getElementById('tab-' + t);
+      if (target) {
+        if (t === 'l' && window.innerWidth >= 1024) {
+          target.style.setProperty('display', 'grid', 'important');
+        } else {
+          target.style.setProperty('display', 'block', 'important');
+        }
+        target.classList.add('fade-in');
+      }
+      
+      const activeBtn = document.getElementById('btn-' + t);
+      if (activeBtn) activeBtn.classList.add('nav-active');
+
+      if (t !== 's') stopCamera();
+      if (t === 's') {
+        setTimeout(() => {
+          const sidInput = document.getElementById('sid');
+          if(sidInput) sidInput.focus();
+        }, 300);
+      }
+    }
+
+    function refresh() {
+      if (typeof google !== 'undefined') {
+        google.script.run.withSuccessHandler(data => {
+          renderLeaderboard(data);
+          recList = data.recognition || []; 
+          if(recList.length > 0 && !recTimer) startShoutouts();
+        }).getDashboardData();
+      }
+    }
+
+    function renderLeaderboard(data) {
+      const medals = ["🥇", "🥈", "🥉"], medalClasses = ["medal-gold", "medal-silver", "medal-bronze"];
+      
+      const mapList = (list, isPoints) => {
+        if (!list || list.length === 0) return '<p class="text-[10px] opacity-30 py-2">No data yet</p>';
+        return list.map((s, i) => {
+          const isMedal = i < 3;
+          
+          if (isPoints) {
+            // Points layout: Rank/Medal on left, Score on right, Name takes up middle
+            return `<div class="flex items-center gap-1 md:gap-3 p-2 rounded-xl border ${isMedal ? medalClasses[i] : 'bg-white/5 border-white/5'}">
+              <span class="w-5 md:w-6 text-center font-black text-xs md:text-sm">${isMedal ? medals[i] : (i + 1)}</span>
+              <span class="flex-1 truncate font-bold text-xs md:text-sm uppercase text-left">${formatName(s.name)}</span>
+              <span class="font-black text-xs md:text-sm ${isMedal ? 'text-inherit' : 'text-brand-accent'}">${s.total}</span>
+            </div>`;
+          } else {
+            // Growth layout: Rank/Medal spaced perfectly left, Name perfectly right
+            return `<div class="flex justify-between items-center p-2 rounded-xl border ${isMedal ? medalClasses[i] : 'bg-white/5 border-white/5'}">
+              <span class="w-5 md:w-6 text-center font-black text-xs md:text-sm">${isMedal ? medals[i] : (i + 1)}</span>
+              <span class="truncate font-bold text-xs md:text-sm uppercase text-right">${formatName(s.name)}</span>
+            </div>`;
+          }
+        }).join('');
+      };
+
+      const createGradeCard = (g) => {
+        const gd = data.grades[g] || {points: [], growth: []};
+        return `<div class="glass rounded-[2.5rem] p-6 border-t-4 border-blue-500 shadow-xl flex-grow fade-in">
+          <h3 class="font-black text-2xl mb-4 italic">GRADE <span class="text-blue-500">${g}</span></h3>
+          <div class="space-y-6">
+            <div><h4 class="text-[10px] font-black text-brand-accent uppercase mb-2 tracking-widest">Point Leaders</h4>${mapList(gd.points, true)}</div>
+            <div><h4 class="text-[10px] font-black text-emerald-400 uppercase mb-2 tracking-widest">Weekly Growth</h4>${mapList(gd.growth, false)}</div>
+          </div>
+        </div>`;
+      };
+
+      document.getElementById('overall-list').innerHTML = mapList(data.overall, true);
+      document.getElementById('overall-growth').innerHTML = mapList(data.overallGrowth, false);
+      
+      if (isLayoutFlipped) {
+        document.getElementById('col-mid').innerHTML = createGradeCard(9) + createGradeCard(11);
+        document.getElementById('col-right').innerHTML = createGradeCard(10) + createGradeCard(12);
+      } else {
+        document.getElementById('col-mid').innerHTML = createGradeCard(9) + createGradeCard(10);
+        document.getElementById('col-right').innerHTML = createGradeCard(11) + createGradeCard(12);
+      }
+    }
+
+    function startShoutouts() { updateShoutout(); recTimer = setInterval(updateShoutout, 8000); }
+    
+    function updateShoutout() {
+      if (!recList.length) return;
+      const card = document.getElementById('rec-card');
+      const s = recList[recIdx];
+      card.style.opacity = '0';
+      setTimeout(() => {
+        document.getElementById('rec-name').innerText = formatName(s.name);
+        let msg = s.type === 'birthday' ? "HAPPY BIRTHDAY!" : "EAGLE PRIDE DETECTED";
+        if(s.type === 'scan') {
+          const scanMsgs = ["MAKING TODAY COUNT", "ACTIVE AND READY", "THE NEST IS PROUD", "POINT SECURED"];
+          msg = scanMsgs[Math.floor(Math.random() * scanMsgs.length)];
+        }
+        document.getElementById('rec-msg').innerHTML = msg; 
+        card.style.opacity = '1';
+        recIdx = (recIdx + 1) % recList.length;
+      }, 700);
+    }
+
+    function handleManualInput(val) {
+      if (!val) return;
+      document.getElementById('sid').value = "";
+      handleScan(val);
+    }
+
+    function handleScan(val) {
+  let cleanedId = val.trim();
+  if (cleanedId.startsWith("030|7FM92|")) cleanedId = cleanedId.substring(10);
+  if (cleanedId.toUpperCase().startsWith('P')) cleanedId = cleanedId.substring(1);
+  stopCamera();
+  showToast("LOOKING UP...", false); 
+  
+  const isNumeric = /^\d+$/.test(cleanedId);
+
+  if (isNumeric) {
+    // Exact ID Lookup
+    google.script.run.withSuccessHandler(s => {
+      if(s.found) activateStudentTerminal(s);
+      else showToast("NOT FOUND", false);
+    }).findStudent(cleanedId);
+  } else {
+    // Name Lookup (Returns Array)
+    google.script.run.withSuccessHandler(res => {
+      if(res.found && res.results.length === 1) {
+        activateStudentTerminal(res.results[0]); // Direct to terminal if only 1 match
+      } else if (res.found && res.results.length > 1) {
+        showSelectionList(res.results); // Show list if multiple
+      } else {
+        showToast("NO MATCHES FOUND", false);
+        cancelSession();
+      }
+    }).findStudentsByName(cleanedId);
+  }
+}
+
+function showSelectionList(results) {
+  document.getElementById('input-zone').classList.add('hidden');
+  const selZone = document.getElementById('selection-zone');
+  selZone.classList.remove('hidden');
+  
+  // Store results globally so the click handler can reference them
+  window.currentSearchResults = results;
+  
+  let html = `<h3 class="text-xl font-black text-white mb-4 italic">SELECT STUDENT</h3>
+              <div class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">`;
+  
+  results.forEach((s, idx) => {
+    html += `<button onclick="selectStudentFromList(${idx})" class="w-full text-left p-4 bg-white/5 hover:bg-brand-accent hover:text-blue-900 border border-white/10 rounded-xl transition-all font-bold uppercase text-sm flex justify-between items-center">
+      <span>${(s.name)} <span class="text-[10px] opacity-70 ml-2">GR: ${s.grade || '-'}</span></span>
+      <span class="opacity-50 text-[10px]">ID: ${s.id}</span>
+    </button>`;
+  });
+  
+  html += `</div><button onclick="cancelSession()" class="mt-6 text-gray-500 font-bold text-[10px] uppercase block mx-auto">Cancel</button>`;
+  selZone.innerHTML = html;
+}
+
+function selectStudentFromList(idx) {
+  const selectedStudent = window.currentSearchResults[idx];
+  activateStudentTerminal(selectedStudent);
+}
+
+// Helper to DRY up the terminal activation process
+function activateStudentTerminal(studentData) {
+  activeStd = studentData; 
+  resetTerminal();
+  const selZone = document.getElementById('selection-zone');
+  if(selZone) selZone.classList.add('hidden');
+  document.getElementById('terminal').classList.remove('hidden');
+  document.getElementById('input-zone').classList.add('hidden'); 
+  document.getElementById('std-name').innerText = formatName(studentData.name);
+  document.getElementById('std-bal').innerText = `Balance: ${studentData.currentPoints}`;
+}
+
+function cancelSession() { 
+  document.getElementById('terminal').classList.add('hidden'); 
+  const selZone = document.getElementById('selection-zone');
+  if(selZone) selZone.classList.add('hidden');
+  document.getElementById('input-zone').classList.remove('hidden'); 
+  
+  // Clear input and refocus
+  setTimeout(() => {
+    const sidInput = document.getElementById('sid');
+    if(sidInput) { 
+      sidInput.value = ""; 
+      sidInput.focus(); 
+    }
+  }, 100); 
+}
+
+
+    function tally(v) { counts[v]++; updateTotal(); }
+   /* old point total for 1,5,10
+   function updateTotal() {
+      const total = (counts[1]*1)+(counts[5]*5)+(counts[10]*10);
+      document.getElementById('session-total').innerText = total;
+      document.getElementById('sub-btn').disabled = total <= 0;
+    }
+    function resetTerminal() { counts = {1:0, 5:0, 10:0}; updateTotal(); }
+    */
+    function updateTotal() {
+      const total = (counts[10]*10) + (counts[50]*50);
+      document.getElementById('session-total').innerText = total;
+      document.getElementById('sub-btn').disabled = total <= 0;
+    }
+    function resetTerminal() { counts = {10:0, 50:0}; updateTotal(); }
+    function cancelSession() { 
+      document.getElementById('terminal').classList.add('hidden'); 
+      document.getElementById('input-zone').classList.remove('hidden'); 
+      setTimeout(() => document.getElementById('sid').focus(), 100); 
+    }
+    function sendPoints() {
+      const pts = parseInt(document.getElementById('session-total').innerText);
+      const btn = document.getElementById('sub-btn');
+      showToast(praiseBot.generate(activeStd, pts), true);
+      btn.innerText = "SAVING..."; btn.disabled = true;
+      google.script.run.withSuccessHandler(() => { 
+        btn.innerText = "SUBMIT"; cancelSession(); refresh(); 
+      }).submitPoints(activeStd.id, activeStd.name, pts);
+    }
+
+    function showToast(m, isBig) { 
+      const t = document.getElementById('toast'); 
+      const tm = document.getElementById('toast-msg');
+      tm.innerHTML = m; 
+      t.classList.remove('opacity-0', 'translate-y-4');
+      if (isBig) t.classList.add('scale-125', '-translate-y-20');
+      setTimeout(() => { 
+        t.classList.add('opacity-0', 'translate-y-4'); 
+        t.classList.remove('scale-125', '-translate-y-20');
+      }, 3000); 
+    }
+
+    async function setScanMode(mode) {
+      const isCam = mode === 'camera';
+      document.getElementById('container-text').classList.toggle('hidden', isCam);
+      document.getElementById('container-camera').classList.toggle('hidden', !isCam);
+      if(isCam) startCamera(); else stopCamera();
+    }
+    async function startCamera() {
+      html5QrCode = new Html5Qrcode("reader");
+      await html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, (text) => handleScan(text));
+    }
+    function stopCamera() { if (html5QrCode && html5QrCode.isScanning) html5QrCode.stop().then(() => html5QrCode.clear()); }
+    function adminLookup() { handleScan(document.getElementById('admin-sid').value); }
+  </script>
+</body>
+</html>
